@@ -34,6 +34,16 @@ export class Game extends Phaser.Scene
     private breathing = false; // a rest "breath" animation is currently playing
     private moveAccum = 0;     // recent movement — the breath must be earned by activity
     private stillTime = 0;     // ms spent stationary since the last real movement
+    private beatPhase = 0;     // accumulated phase for the quickening vignette beat
+    private hazTint = new Phaser.Display.Color();   // current block colour (contrasts the vignette)
+    private lastQuip = -1;     // avoid repeating the same quirky line back-to-back
+
+    //  Short, quirky lines shown at random intervals for long-run flavour. Small, not loud.
+    private static readonly QUIPS = [
+        'keep going', 'still here?', 'smooth', 'in the zone', 'the void blinks',
+        "don't look back", 'how long?', 'unbothered', 'flow state', 'one more',
+        'blocks fear you', 'respect', 'no thoughts', 'locked in',
+    ];
 
     //  Base half-size of the player. Collision uses this fixed box, NOT the visually
     //  squashed/leaned sprite, so deaths stay fair regardless of the movement juice.
@@ -60,6 +70,8 @@ export class Game extends Phaser.Scene
         this.breathing = false;
         this.moveAccum = 0;
         this.stillTime = 0;
+        this.beatPhase = 0;
+        this.lastQuip = -1;
 
         this.axis = onAxisX(this);
 
@@ -77,6 +89,25 @@ export class Game extends Phaser.Scene
         this.scoreText = this.add.text(32, 24, '0', {
             fontFamily: FONT, fontSize: '56px', color: css(PALETTE.warn),
         }).setDepth(10);   // above the vignette so the score stays readable at the edge
+
+        this.scheduleQuip();
+    }
+
+    //  Show a small quirky line, then schedule the next at a RANDOM interval (never a
+    //  fixed cadence). Small and occasional — flavour, not noise.
+    private scheduleQuip ()
+    {
+        this.time.delayedCall(Phaser.Math.Between(13000, 22000), () => {
+            if (this.dead) return;
+            let i = this.lastQuip;
+            while (i === this.lastQuip) i = Phaser.Math.Between(0, Game.QUIPS.length - 1);
+            this.lastQuip = i;
+            const m = this.add.text(this.scale.width / 2, this.scale.height * 0.14, Game.QUIPS[i], {
+                fontFamily: FONT, fontSize: '30px', color: css(PALETTE.mute),
+            }).setOrigin(0.5).setAlpha(0).setDepth(9);
+            this.tweens.add({ targets: m, alpha: 0.85, duration: 360, yoyo: true, hold: 1400, ease: 'Sine.InOut', onComplete: () => m.destroy() });
+            this.scheduleQuip();
+        });
     }
 
     //  Procedural radial vignette — WHITE so it can be tinted to any colour at runtime.
@@ -151,14 +182,20 @@ export class Game extends Phaser.Scene
         const spawnInterval = Phaser.Math.Linear(SPAWN_MS.easy, SPAWN_MS.hard, k);
         const fallSpeed = Phaser.Math.Linear(FALL_PX.easy, FALL_PX.hard, k);
 
-        //  Danger glow: intensity deepens with time (+pulse, off if reduced), and the
-        //  COLOUR drifts a full wheel ~every 40s starting at hot-red — so a long run keeps
-        //  evolving (orange → magenta → violet → …) instead of freezing after the cap.
-        const pulse = this.reduced ? 0 : Math.sin(this.elapsed / 260) * 0.08;
-        this.vignette.setAlpha((0.6 + pulse) * t);
+        //  Danger glow: a "beat" pulse whose TEMPO quickens over a long run (difficulty is
+        //  capped, so this carries the escalation), plus a hue that drifts a full wheel
+        //  ~every 40s — so it keeps evolving instead of freezing. Phase-accumulated so the
+        //  changing tempo stays smooth. Pulse off under reduce-motion.
+        const beatMs = Phaser.Math.Linear(820, 360, Math.min(this.elapsed / 120000, 1));
+        this.beatPhase += (dt / beatMs) * Math.PI * 2;
+        const pulse = this.reduced ? 0 : (Math.sin(this.beatPhase) * 0.5 + 0.5) * 0.14;
+        this.vignette.setAlpha((0.55 + pulse) * t);
         const hue = (this.elapsed / 40000) % 1;
         this.glow.setFromHSV(hue, 0.7, 1);
         this.vignette.setTint(this.glow.color);
+        //  Falling blocks take the COMPLEMENT of the vignette hue (muted) so they always
+        //  contrast the glow and never blend into it / strain the eyes.
+        this.hazTint.setFromHSV((hue + 0.5) % 1, 0.4, 0.82);
 
         this.spawnTimer += dt;
         if (this.spawnTimer >= spawnInterval) {
@@ -173,6 +210,7 @@ export class Game extends Phaser.Scene
         for (let i = this.hazards.length - 1; i >= 0; i--) {
             const haz = this.hazards[i];
             haz.y += fallSpeed * sec;
+            haz.setFillStyle(this.hazTint.color);   // shifts to contrast the vignette
 
             //  Destroy as soon as the block fully clears the bottom edge (top past it).
             if (haz.y - haz.height / 2 > this.scale.height) {
