@@ -1,11 +1,13 @@
 import { Scene } from 'phaser';
+import { PALETTE, css, FONT } from '../lib/palette';
+import { Score } from '../lib/score';
+import { onAction } from '../lib/input';
 
+//  The ONE mechanic lives here — this is the only file you reopen per game.
+//  Reach for lib/input (onAxisX / onAction), lib/score, and feel/ (shake, burst,
+//  hitstop, sfx). Keep it to a single mechanic; everything else stays cut.
 export class Game extends Scene
 {
-    camera: Phaser.Cameras.Scene2D.Camera;
-    background: Phaser.GameObjects.Image;
-    msg_text : Phaser.GameObjects.Text;
-
     constructor ()
     {
         super('Game');
@@ -13,23 +15,13 @@ export class Game extends Scene
 
     create ()
     {
-        this.camera = this.cameras.main;
-        this.camera.setBackgroundColor(0x00ff00);
+        const { width: w, height: h } = this.scale;
 
-        this.background = this.add.image(512, 384, 'background');
-        this.background.setAlpha(0.5);
+        this.add.text(w / 2, h / 2, 'build your mechanic here', {
+            fontFamily: FONT, fontSize: '28px', color: css(PALETTE.cool),
+        }).setOrigin(0.5);
 
-        this.msg_text = this.add.text(512, 384, 'Make something fun!\nand share it with us:\nsupport@phaser.io', {
-            fontFamily: 'Arial Black', fontSize: 38, color: '#ffffff',
-            stroke: '#000000', strokeThickness: 8,
-            align: 'center'
-        });
-        this.msg_text.setOrigin(0.5);
-
-        this.input.once('pointerdown', () => {
-
-            this.scene.start('GameOver');
-
-        });
+        //  Placeholder flow so the skeleton runs end-to-end out of the box.
+        onAction(this, () => this.scene.start('GameOver', { score: Score.value, high: Score.high }));
     }
 }

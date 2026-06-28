@@ -1,11 +1,14 @@
-import { Scene, GameObjects } from 'phaser';
+import { Scene } from 'phaser';
+import { PALETTE, css, FONT } from '../lib/palette';
+import { Score } from '../lib/score';
+import { onAction } from '../lib/input';
+import { sfx } from '../feel/sfx';
+
+//  Rename per game; it keys the high score in localStorage (quench:<id>:hi).
+const GAME_ID = 'template';
 
 export class MainMenu extends Scene
 {
-    background: GameObjects.Image;
-    logo: GameObjects.Image;
-    title: GameObjects.Text;
-
     constructor ()
     {
         super('MainMenu');
@@ -13,20 +16,23 @@ export class MainMenu extends Scene
 
     create ()
     {
-        this.background = this.add.image(512, 384, 'background');
+        const { width: w, height: h } = this.scale;
 
-        this.logo = this.add.image(512, 300, 'logo');
-
-        this.title = this.add.text(512, 460, 'Main Menu', {
-            fontFamily: 'Arial Black', fontSize: 38, color: '#ffffff',
-            stroke: '#000000', strokeThickness: 8,
-            align: 'center'
+        this.add.text(w / 2, h * 0.4, 'TITLE', {
+            fontFamily: FONT, fontSize: '72px', color: css(PALETTE.ink),
         }).setOrigin(0.5);
 
-        this.input.once('pointerdown', () => {
+        this.add.text(w / 2, h * 0.7, 'tap or press space to start', {
+            fontFamily: FONT, fontSize: '22px', color: css(PALETTE.mute),
+        }).setOrigin(0.5);
 
+        let started = false;
+        onAction(this, () => {
+            if (started) return;
+            started = true;
+            sfx.play('start');
+            Score.start(GAME_ID);
             this.scene.start('Game');
-
         });
     }
 }

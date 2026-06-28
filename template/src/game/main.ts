@@ -1,31 +1,36 @@
+import * as Phaser from 'phaser';
 import { Boot } from './scenes/Boot';
-import { GameOver } from './scenes/GameOver';
-import { Game as MainGame } from './scenes/Game';
-import { MainMenu } from './scenes/MainMenu';
-import { AUTO, Game } from 'phaser';
 import { Preloader } from './scenes/Preloader';
+import { MainMenu } from './scenes/MainMenu';
+import { Game as MainGame } from './scenes/Game';
+import { GameOver } from './scenes/GameOver';
+import { PALETTE } from './lib/palette';
 
-//  Find out more information about the Game Config at:
-//  https://docs.phaser.io/api-documentation/typedef/types-core#gameconfig
+//  Design resolution 960×540, FIT + centered, per CONVENTIONS. See the studio bible.
 const config: Phaser.Types.Core.GameConfig = {
-    type: AUTO,
-    width: 1024,
-    height: 768,
+    type: Phaser.AUTO,
+    width: 960,
+    height: 540,
     parent: 'game-container',
-    backgroundColor: '#028af8',
-    scene: [
-        Boot,
-        Preloader,
-        MainMenu,
-        MainGame,
-        GameOver
-    ]
+    backgroundColor: PALETTE.bg,
+    roundPixels: true,
+    scale: {
+        mode: Phaser.Scale.FIT,
+        autoCenter: Phaser.Scale.CENTER_BOTH,
+    },
+    scene: [Boot, Preloader, MainMenu, MainGame, GameOver],
 };
 
 const StartGame = (parent: string) => {
+    const game = new Phaser.Game({ ...config, parent });
 
-    return new Game({ ...config, parent });
+    //  Pause the active game scene when tabbed away so difficulty doesn't ramp in
+    //  the background (CONVENTIONS safety rule). Only 'Game' needs it.
+    const get = () => game.scene.getScene('Game');
+    window.addEventListener('blur', () => { const s = get(); if (s?.scene.isActive()) s.scene.pause(); });
+    window.addEventListener('focus', () => { const s = get(); if (s?.scene.isPaused()) s.scene.resume(); });
 
-}
+    return game;
+};
 
 export default StartGame;
