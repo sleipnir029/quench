@@ -20,17 +20,19 @@ export class Preloader extends Scene
         const { width: w, height: h } = this.scale;
 
         const logo = this.add.image(w / 2, h / 2, 'zeezbit-logo').setAlpha(0);
-        const fit = Math.min(w, h) * 0.6;
-        logo.setDisplaySize(fit, fit);
+        //  Uniform scale (not setDisplaySize) preserves the logo's aspect ratio.
+        const s = (w * 0.7) / logo.width;
+        logo.setScale(s * 0.9);
 
-        //  Studio splash: fade in → hold → fade out → title card. One tween (yoyo+hold).
-        this.tweens.add({
+        //  Studio splash: gradual fade + settle in → hold → gradual fade + drift out.
+        //  Slow Sine easing makes the transition smooth instead of sudden.
+        this.tweens.chain({
             targets: logo,
-            alpha: 1,
-            duration: 300,
-            ease: 'Quad.Out',
-            yoyo: true,
-            hold: 450,
+            tweens: [
+                { alpha: 1, scale: s, duration: 900, ease: 'Sine.Out' },   // fade + settle in
+                { alpha: 1, duration: 700 },                               // hold
+                { alpha: 0, scale: s * 1.06, duration: 900, ease: 'Sine.In' }, // fade + drift out
+            ],
             onComplete: () => this.scene.start('MainMenu'),
         });
     }
