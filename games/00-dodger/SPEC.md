@@ -46,6 +46,11 @@ mouse). Arrow keys / A,D as a secondary path. No other input.
   particles beyond the single death burst, background music, sprites/images, leaderboards,
   combos, near-miss scoring. If you want any of these, they go in game 1+, not here.
 
+## Allowed extras (deliberate, added after v1)
+- A couple of **visual-only easter eggs** (e.g. a Konami-code flourish on the menu, a
+  hidden nod at a rare score). They must not touch gameplay, fairness, scoring, or audio
+  (audio stays start+hit only). Anything that affects play still goes to game 1+.
+
 ## Definition of done (ship gate)
 Runs from the itch page in a browser, has a title and a restart, score + high score
 work, dies correctly, and `feel/` + `lib/` have been promoted into `template/`.

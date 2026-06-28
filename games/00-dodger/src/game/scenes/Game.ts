@@ -27,6 +27,7 @@ export class Game extends Phaser.Scene
     private lastMilestone = 0; // last 10s score pop fired
     private baseY = 0;         // player rest y, for the idle bob
     private vignette!: Phaser.GameObjects.Image;
+    private egg42 = false;     // easter egg: fires once at 42s
 
     //  Base half-size of the player. Collision uses this fixed box, NOT the visually
     //  squashed/leaned sprite, so deaths stay fair regardless of the movement juice.
@@ -48,6 +49,7 @@ export class Game extends Phaser.Scene
         this.spawnTimer = 0;
         this.dead = false;
         this.lastMilestone = 0;
+        this.egg42 = false;
 
         this.axis = onAxisX(this);
 
@@ -148,6 +150,16 @@ export class Game extends Phaser.Scene
             this.lastMilestone = score;
             this.scoreText.setScale(1);
             this.tweens.add({ targets: this.scoreText, scale: 1.5, duration: 130, yoyo: true, ease: 'Quad.Out' });
+        }
+
+        //  Easter egg: a quiet nod for the rare run that reaches 42s. Visual only.
+        if (!this.egg42 && score >= 42) {
+            this.egg42 = true;
+            this.scoreText.setColor(css(PALETTE.cool));
+            const m = this.add.text(this.scale.width / 2, this.scale.height * 0.18, "don't panic", {
+                fontFamily: FONT, fontSize: '44px', color: css(PALETTE.cool),
+            }).setOrigin(0.5).setAlpha(0).setDepth(10);
+            this.tweens.add({ targets: m, alpha: 1, duration: 220, yoyo: true, hold: 1400, onComplete: () => m.destroy() });
         }
     }
 
