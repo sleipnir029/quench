@@ -16,9 +16,10 @@ export function onAxisX(scene: Phaser.Scene): AxisX {
 
     scene.input.on('pointermove', (p: Phaser.Input.Pointer) => { target = p.x; });
 
-    const keys = scene.input.keyboard?.addKeys('LEFT,RIGHT,A,D') as
-        Record<'LEFT' | 'RIGHT' | 'A' | 'D', Phaser.Input.Keyboard.Key> | undefined;
+    const keys = scene.input.keyboard?.addKeys('LEFT,RIGHT,A,D,SHIFT') as
+        Record<'LEFT' | 'RIGHT' | 'A' | 'D' | 'SHIFT', Phaser.Input.Keyboard.Key> | undefined;
     const speed = w / 0.9; // keys cross the screen in ~0.9s — precise, not twitchy (mouse is direct, unaffected)
+    const FINE = 0.35;     // hold Shift for fine, precise nudging
 
     //  Phaser's scene 'update' fires on scene.events. Scene restart is shutdown (not
     //  destroy), which does NOT clear these listeners — so remove it on shutdown or it
@@ -27,7 +28,8 @@ export function onAxisX(scene: Phaser.Scene): AxisX {
         if (!keys) return;
         const dir = (keys.LEFT.isDown || keys.A.isDown ? -1 : 0) +
                     (keys.RIGHT.isDown || keys.D.isDown ? 1 : 0);
-        if (dir) target = Phaser.Math.Clamp(target + dir * speed * (dt / 1000), 0, w);
+        const fine = keys.SHIFT.isDown ? FINE : 1;
+        if (dir) target = Phaser.Math.Clamp(target + dir * speed * fine * (dt / 1000), 0, w);
     };
     scene.events.on('update', onUpdate);
     scene.events.once('shutdown', () => scene.events.off('update', onUpdate));
