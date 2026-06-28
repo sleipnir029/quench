@@ -1,35 +1,50 @@
 import { Scene } from 'phaser';
+import { PALETTE, css, FONT } from '../lib/palette';
+import { Score } from '../lib/score';
+import { onAction } from '../lib/input';
+import { sfx } from '../feel/sfx';
+
+const GAME_ID = '00-dodger';
+
+interface GameOverData { score: number; high: number; isBest: boolean; }
 
 export class GameOver extends Scene
 {
-    camera: Phaser.Cameras.Scene2D.Camera;
-    background: Phaser.GameObjects.Image;
-    gameover_text : Phaser.GameObjects.Text;
-
     constructor ()
     {
         super('GameOver');
     }
 
-    create ()
+    create (data: GameOverData)
     {
-        this.camera = this.cameras.main
-        this.camera.setBackgroundColor(0xff0000);
+        const { width: w, height: h } = this.scale;
+        const score = data.score ?? 0;
+        const high = data.high ?? 0;
+        const isBest = data.isBest ?? false;
 
-        this.background = this.add.image(512, 384, 'background');
-        this.background.setAlpha(0.5);
+        this.add.text(w / 2, h * 0.32, 'GAME OVER', {
+            fontFamily: FONT, fontSize: '56px', color: css(PALETTE.hot),
+        }).setOrigin(0.5);
 
-        this.gameover_text = this.add.text(512, 384, 'Game Over', {
-            fontFamily: 'Arial Black', fontSize: 64, color: '#ffffff',
-            stroke: '#000000', strokeThickness: 8,
-            align: 'center'
-        });
-        this.gameover_text.setOrigin(0.5);
+        this.add.text(w / 2, h * 0.52, `${score}s`, {
+            fontFamily: FONT, fontSize: '40px', color: css(PALETTE.ink),
+        }).setOrigin(0.5);
 
-        this.input.once('pointerdown', () => {
+        this.add.text(w / 2, h * 0.63, isBest ? 'new best!' : `best  ${high}s`, {
+            fontFamily: FONT, fontSize: '22px', color: css(isBest ? PALETTE.warn : PALETTE.mute),
+        }).setOrigin(0.5);
 
-            this.scene.start('MainMenu');
+        this.add.text(w / 2, h * 0.8, 'tap or press space to retry', {
+            fontFamily: FONT, fontSize: '20px', color: css(PALETTE.mute),
+        }).setOrigin(0.5);
 
+        let restarting = false;
+        onAction(this, () => {
+            if (restarting) return;
+            restarting = true;
+            sfx.play('start');
+            Score.start(GAME_ID);   // restart loops straight into a fresh run
+            this.scene.start('Game');
         });
     }
 }
