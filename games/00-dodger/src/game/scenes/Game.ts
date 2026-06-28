@@ -36,13 +36,18 @@ export class Game extends Phaser.Scene
     private stillTime = 0;     // ms spent stationary since the last real movement
     private beatPhase = 0;     // accumulated phase for the quickening vignette beat
     private hazTint = new Phaser.Display.Color();   // current block colour (contrasts the vignette)
-    private lastQuip = -1;     // avoid repeating the same quirky line back-to-back
+    private trailTimer = 0;    // throttles player afterimage spawns
+    private quipBag: number[] = [];   // shuffle bag — every line shows once before any repeats
 
     //  Short, quirky lines shown at random intervals for long-run flavour. Small, not loud.
     private static readonly QUIPS = [
         'keep going', 'still here?', 'smooth', 'in the zone', 'the void blinks',
         "don't look back", 'how long?', 'unbothered', 'flow state', 'one more',
-        'blocks fear you', 'respect', 'no thoughts', 'locked in',
+        'blocks fear you', 'respect', 'no thoughts', 'locked in', 'too easy?',
+        'breathe', 'eyes up', 'you got this', 'slippery', 'untouchable',
+        'dialed in', 'feel the rhythm', 'stay loose', 'nice one', 'clean',
+        'survivor', 'the grind', 'zen mode', 'whoa', 'keep weaving',
+        'cracked', 'on a roll', 'silky', 'no notes', 'menace',
     ];
 
     //  Base half-size of the player. Collision uses this fixed box, NOT the visually
@@ -71,7 +76,8 @@ export class Game extends Phaser.Scene
         this.moveAccum = 0;
         this.stillTime = 0;
         this.beatPhase = 0;
-        this.lastQuip = -1;
+        this.trailTimer = 0;
+        this.quipBag = [];
 
         this.axis = onAxisX(this);
 
@@ -99,9 +105,12 @@ export class Game extends Phaser.Scene
     {
         this.time.delayedCall(Phaser.Math.Between(13000, 22000), () => {
             if (this.dead) return;
-            let i = this.lastQuip;
-            while (i === this.lastQuip) i = Phaser.Math.Between(0, Game.QUIPS.length - 1);
-            this.lastQuip = i;
+            //  Shuffle bag: refill + shuffle when empty, then draw one. Guarantees every
+            //  line appears once before any repeats — no clustering from plain random.
+            if (this.quipBag.length === 0) {
+                this.quipBag = Phaser.Utils.Array.Shuffle(Game.QUIPS.map((_, idx) => idx));
+            }
+            const i = this.quipBag.pop()!;
             const m = this.add.text(this.scale.width / 2, this.scale.height * 0.14, Game.QUIPS[i], {
                 fontFamily: FONT, fontSize: '30px', color: css(PALETTE.mute),
             }).setOrigin(0.5).setAlpha(0).setDepth(9);
@@ -166,6 +175,14 @@ export class Game extends Phaser.Scene
         const idle = 1 - Phaser.Math.Clamp(speed * 0.05, 0, 1);
         this.player.y = this.baseY + Math.sin(this.elapsed / 320) * (this.reduced ? 0 : 5) * idle;
 
+        //  Motion trail: fading afterimages of the block while it moves fast. Throttled,
+        //  and off under reduce-motion (motion smearing).
+        this.trailTimer += dt;
+        if (!this.reduced && speed > 6 && this.trailTimer > 32) {
+            this.trailTimer = 0;
+            this.spawnTrail();
+        }
+
         //  Dynamic rest: only AFTER a real bout of movement and THEN holding still a beat
         //  does the block take a comic "breath out" — earned and relatable, not constant.
         if (speed > 3) { this.moveAccum = Math.min(this.moveAccum + speed, 5000); this.stillTime = 0; }
@@ -180,7 +197,10 @@ export class Game extends Phaser.Scene
         const t = Math.min(this.elapsed / RAMP_MS, 1);
         const k = t * t;
         const spawnInterval = Phaser.Math.Linear(SPAWN_MS.easy, SPAWN_MS.hard, k);
-        const fallSpeed = Phaser.Math.Linear(FALL_PX.easy, FALL_PX.hard, k);
+        //  Wave the fall speed (~±20% over ~9s): surge → ease back → surge, so the player
+        //  rides a rhythm and can lock in. Still just fallSpeed vs time — no new mechanic.
+        const wave = 1 + 0.2 * Math.sin(this.elapsed / 1400);
+        const fallSpeed = Phaser.Math.Linear(FALL_PX.easy, FALL_PX.hard, k) * wave;
 
         //  Danger glow: a "beat" pulse whose TEMPO quickens over a long run (difficulty is
         //  capped, so this carries the escalation), plus a hue that drifts a full wheel
@@ -258,6 +278,19 @@ export class Game extends Phaser.Scene
         haz.setScale(1, 0.4);
         this.tweens.add({ targets: haz, scaleY: 1, alpha: 1, duration: 160, ease: 'Quad.Out' });
         this.hazards.push(haz);
+    }
+
+    //  One fading afterimage of the block, behind it, matching its current squash/lean.
+    private spawnTrail ()
+    {
+        const p = this.player;
+        const ghost = this.add.rectangle(p.x, p.y, 92, 56, PALETTE.hot)
+            .setScale(p.scaleX, p.scaleY).setRotation(p.rotation)
+            .setAlpha(0.45).setDepth(-1);
+        this.tweens.add({
+            targets: ghost, alpha: 0, scaleX: p.scaleX * 0.6, scaleY: p.scaleY * 0.6,
+            duration: 340, ease: 'Quad.Out', onComplete: () => ghost.destroy(),
+        });
     }
 
     //  Comic exhale: the block inhales tall, sighs out wide like a deflating blob, then
