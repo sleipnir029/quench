@@ -2,6 +2,7 @@ import * as Phaser from 'phaser';
 import { PALETTE, css, FONT } from '../lib/palette';
 import { Score } from '../lib/score';
 import { onAxisX, type AxisX } from '../lib/input';
+import { prefersReducedMotion } from '../lib/prefs';
 import { sfx } from '../feel/sfx';
 import { shake } from '../feel/shake';
 import { burst } from '../feel/burst';
@@ -28,6 +29,8 @@ export class Game extends Phaser.Scene
     private baseY = 0;         // player rest y, for the idle bob
     private vignette!: Phaser.GameObjects.Image;
     private egg42 = false;     // easter egg: fires once at 42s
+    private reduced = false;   // OS "reduce motion" — tones down shake/zoom/pulse/squash
+    private glow = new Phaser.Display.Color();   // reused for the vignette's drifting hue
 
     //  Base half-size of the player. Collision uses this fixed box, NOT the visually
     //  squashed/leaned sprite, so deaths stay fair regardless of the movement juice.
@@ -50,6 +53,7 @@ export class Game extends Phaser.Scene
         this.dead = false;
         this.lastMilestone = 0;
         this.egg42 = false;
+        this.reduced = prefersReducedMotion();
 
         this.axis = onAxisX(this);
 
@@ -58,31 +62,55 @@ export class Game extends Phaser.Scene
         this.prevX = this.player.x;
         this.baseY = this.player.y;
 
-        //  Rising-tension vignette: a radial dark overlay whose alpha grows with
-        //  difficulty. Texture built once procedurally (no asset), reused across runs.
+        //  Rising-tension vignette: a radial glow (white texture, tinted live) whose
+        //  alpha grows with difficulty and whose COLOUR drifts over time so long runs
+        //  keep evolving instead of freezing after the difficulty caps.
         this.vignette = this.add.image(w / 2, h / 2, this.vignetteTexture(w, h))
-            .setAlpha(0).setDepth(5);
+            .setAlpha(0).setDepth(5).setTint(PALETTE.hot);
 
         this.scoreText = this.add.text(32, 24, '0', {
             fontFamily: FONT, fontSize: '56px', color: css(PALETTE.warn),
         }).setDepth(10);   // above the vignette so the score stays readable at the edge
+
+        //  Long-run variety: every ~22s a gentle, telegraphed camera "breath". Skipped
+        //  entirely under reduce-motion (it's the one effect that can cause sickness).
+        if (!this.reduced) {
+            this.time.addEvent({ delay: 22000, loop: true, callback: () => this.zoomBreath() });
+        }
     }
 
-    //  Procedural radial vignette — a HOT (danger) edge glow, not black: a black
-    //  vignette on the near-black bg was invisible. Transparent centre (player stays
-    //  clear) → hot at the corners. Cached.
+    //  Telegraphed gentle zoom: warn the player, then a slow ±5% camera breath and back,
+    //  so a long run has rhythm without surprising or disorienting them.
+    private zoomBreath ()
+    {
+        if (this.dead) return;
+        const cue = this.add.text(this.scale.width / 2, this.scale.height * 0.12, '◎  zoom incoming', {
+            fontFamily: FONT, fontSize: '36px', color: css(PALETTE.warn),
+        }).setOrigin(0.5).setAlpha(0).setDepth(10);
+        this.tweens.add({ targets: cue, alpha: 1, duration: 300, yoyo: true, hold: 1000, onComplete: () => cue.destroy() });
+
+        this.time.delayedCall(1500, () => {
+            if (this.dead) return;
+            const cam = this.cameras.main;
+            cam.zoomTo(1.05, 1300, 'Sine.InOut');
+            this.time.delayedCall(1300, () => { if (!this.dead) cam.zoomTo(1, 1300, 'Sine.InOut'); });
+        });
+    }
+
+    //  Procedural radial vignette — WHITE so it can be tinted to any colour at runtime.
+    //  Transparent centre (play area stays clear) → opaque at the corners. A black
+    //  vignette on the near-black bg was invisible; tinting a white one keeps it visible
+    //  and lets the colour evolve. Cached.
     private vignetteTexture (w: number, h: number): string
     {
         const key = 'vignette';
         if (this.textures.exists(key)) return key;
-        const c = Phaser.Display.Color.IntegerToColor(PALETTE.hot);
-        const rgb = `${c.red},${c.green},${c.blue}`;
         const tex = this.textures.createCanvas(key, w, h);
         const ctx = tex!.getContext();
         const g = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.25, w / 2, h / 2, Math.max(w, h) * 0.72);
-        g.addColorStop(0, `rgba(${rgb},0)`);
-        g.addColorStop(0.6, `rgba(${rgb},0)`);   // keep the play area clear
-        g.addColorStop(1, `rgba(${rgb},1)`);      // glow concentrated at the edges
+        g.addColorStop(0, 'rgba(255,255,255,0)');
+        g.addColorStop(0.6, 'rgba(255,255,255,0)');   // keep the play area clear
+        g.addColorStop(1, 'rgba(255,255,255,1)');      // glow concentrated at the edges
         ctx.fillStyle = g;
         ctx.fillRect(0, 0, w, h);
         tex!.refresh();
@@ -101,16 +129,19 @@ export class Game extends Phaser.Scene
 
         //  Movement juice: lean toward motion and squash/stretch with speed, easing
         //  back to rest when still. Visual only — collision uses the fixed box below.
+        //  Amplitudes are toned down under reduce-motion.
+        const sMax = this.reduced ? 0.10 : 0.28;
+        const leanMax = this.reduced ? 0.07 : 0.22;
         const vx = this.player.x - this.prevX;
         this.prevX = this.player.x;
-        const stretch = Phaser.Math.Clamp(Math.abs(vx) * 0.012, 0, 0.28);
-        this.player.rotation = Phaser.Math.Linear(this.player.rotation, Phaser.Math.Clamp(vx * 0.012, -0.22, 0.22), 0.2);
+        const stretch = Phaser.Math.Clamp(Math.abs(vx) * 0.012, 0, sMax);
+        this.player.rotation = Phaser.Math.Linear(this.player.rotation, Phaser.Math.Clamp(vx * 0.012, -leanMax, leanMax), 0.2);
         this.player.scaleX = Phaser.Math.Linear(this.player.scaleX, 1 + stretch, 0.25);
         this.player.scaleY = Phaser.Math.Linear(this.player.scaleY, 1 - stretch, 0.25);
 
-        //  Idle bob: gentle "breathing" when still, fading out as you move.
+        //  Idle bob: gentle "breathing" when still, fading out as you move (off if reduced).
         const idle = 1 - Phaser.Math.Clamp(Math.abs(vx) * 0.05, 0, 1);
-        this.player.y = this.baseY + Math.sin(this.elapsed / 320) * 5 * idle;
+        this.player.y = this.baseY + Math.sin(this.elapsed / 320) * (this.reduced ? 0 : 5) * idle;
 
         //  Difficulty: still the two numbers vs time, but on a quadratic ease-in curve
         //  so the early game is calm and tension builds as it ramps.
@@ -119,9 +150,14 @@ export class Game extends Phaser.Scene
         const spawnInterval = Phaser.Math.Linear(SPAWN_MS.easy, SPAWN_MS.hard, k);
         const fallSpeed = Phaser.Math.Linear(FALL_PX.easy, FALL_PX.hard, k);
 
-        //  Danger glow deepens linearly with time, with a subtle pulse so it reads as
-        //  rising threat. Visible now that it's hot-red on the dark bg (was black).
-        this.vignette.setAlpha((0.6 + Math.sin(this.elapsed / 260) * 0.08) * t);
+        //  Danger glow: intensity deepens with time (+pulse, off if reduced), and the
+        //  COLOUR drifts a full wheel ~every 40s starting at hot-red — so a long run keeps
+        //  evolving (orange → magenta → violet → …) instead of freezing after the cap.
+        const pulse = this.reduced ? 0 : Math.sin(this.elapsed / 260) * 0.08;
+        this.vignette.setAlpha((0.6 + pulse) * t);
+        const hue = (this.elapsed / 40000) % 1;
+        this.glow.setFromHSV(hue, 0.7, 1);
+        this.vignette.setTint(this.glow.color);
 
         this.spawnTimer += dt;
         if (this.spawnTimer >= spawnInterval) {
@@ -137,7 +173,8 @@ export class Game extends Phaser.Scene
             const haz = this.hazards[i];
             haz.y += fallSpeed * sec;
 
-            if (haz.y - haz.height > this.scale.height) {
+            //  Destroy as soon as the block fully clears the bottom edge (top past it).
+            if (haz.y - haz.height / 2 > this.scale.height) {
                 haz.destroy();
                 this.hazards.splice(i, 1);
                 continue;
