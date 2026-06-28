@@ -18,7 +18,7 @@ export function onAxisX(scene: Phaser.Scene): AxisX {
 
     const keys = scene.input.keyboard?.addKeys('LEFT,RIGHT,A,D') as
         Record<'LEFT' | 'RIGHT' | 'A' | 'D', Phaser.Input.Keyboard.Key> | undefined;
-    const speed = w / 0.6; // cross the screen in ~0.6s on keys alone
+    const speed = w / 0.9; // keys cross the screen in ~0.9s — precise, not twitchy (mouse is direct, unaffected)
 
     //  Phaser's scene 'update' fires on scene.events. Scene restart is shutdown (not
     //  destroy), which does NOT clear these listeners — so remove it on shutdown or it
