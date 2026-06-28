@@ -5,3 +5,12 @@
 3. Shipped the reusable studio kit alongside it: `feel/` (shake, burst, hitstop, sfx) and `lib/` (palette, single-input, persistent high score), now promoted into the template every future game copies.
 4. Built on Phaser 4 (primitives only, zero game art), 1920×1080 render for crisp text/shapes, with a Zeezbit studio splash that blends with the logo's own colour and morphs into the game background.
 5. Next: game 1 (01-mixer) inherits this template, so it starts at "build the mechanic" instead of "wire the machine."
+
+## Accessibility note (paste on the itch.io page)
+> **Motion note:** This game uses screen shake, gentle zoom "breaths", and pulsing
+> visual effects. If you're sensitive to motion, enable your OS **"Reduce Motion"**
+> setting before playing — the game detects it and automatically disables the zoom,
+> softens the shake (into a flash), and tones down the squash/pulse effects.
+
+(macOS: System Settings → Accessibility → Display → Reduce Motion. Windows: Settings →
+Accessibility → Visual effects → Animation effects off. iOS/Android have equivalents.)
