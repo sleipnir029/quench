@@ -1,8 +1,14 @@
-body {
+html, body {
     margin: 0;
     padding: 0;
     color: rgba(255, 255, 255, 0.87);
     background-color: #0f0f0f;
+    /* Mobile: no scroll/pull-to-refresh/zoom stealing the touch drag */
+    overscroll-behavior: none;
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
 }
 
 #app {
@@ -12,4 +18,25 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
+}
+
+#game-container canvas { touch-action: none; }
+
+/* "Rotate to landscape" hint — only on touch devices in portrait. */
+#rotate { display: none; }
+@media (orientation: portrait) and (pointer: coarse) {
+    #rotate {
+        display: flex;
+        position: fixed;
+        inset: 0;
+        z-index: 10;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        background: #14131a;
+        color: #e8e6e3;
+        font-family: ui-monospace, monospace;
+        font-size: 26px;
+        line-height: 1.7;
+    }
 }
