@@ -14,7 +14,20 @@ export function onAxisX(scene: Phaser.Scene): AxisX {
     const w = scene.scale.width;
     let target = w / 2;
 
-    scene.input.on('pointermove', (p: Phaser.Input.Pointer) => { target = p.x; });
+    //  Touch uses RELATIVE drag so the finger can sit off to the side (not over the
+    //  player or its column, which on a phone hides incoming hazards). Mouse/pen stay
+    //  absolute (cursor x = target). Sensitivity > 1 so a thumb-flick covers the screen.
+    const TOUCH_SENS = 1.8;
+    let anchorX = 0;
+    let base = target;
+    scene.input.on('pointerdown', (p: Phaser.Input.Pointer) => { anchorX = p.x; base = target; });
+    scene.input.on('pointermove', (p: Phaser.Input.Pointer) => {
+        if (p.wasTouch) {
+            if (p.isDown) target = Phaser.Math.Clamp(base + (p.x - anchorX) * TOUCH_SENS, 0, w);
+        } else {
+            target = p.x;
+        }
+    });
 
     const keys = scene.input.keyboard?.addKeys('LEFT,RIGHT,A,D,SHIFT') as
         Record<'LEFT' | 'RIGHT' | 'A' | 'D' | 'SHIFT', Phaser.Input.Keyboard.Key> | undefined;
