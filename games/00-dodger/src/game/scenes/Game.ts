@@ -27,6 +27,7 @@ export class Game extends Phaser.Scene
     private prevX = 0;         // for velocity-based squash/stretch + lean
     private lastMilestone = 0; // last 10s score pop fired
     private vignette!: Phaser.GameObjects.Image;
+    private baseY = 0;         // player rest y, for the constant idle bob
     private egg42 = false;     // easter egg: fires once at 42s
     private reduced = false;   // OS "reduce motion" — tones down shake/zoom/pulse/squash
     private glow = new Phaser.Display.Color();   // reused for the vignette's drifting hue
@@ -65,6 +66,7 @@ export class Game extends Phaser.Scene
         this.player = this.add.rectangle(w / 2, h - 80, 92, 56, PALETTE.hot)
             .setStrokeStyle(4, PALETTE.ink, 0.35);
         this.prevX = this.player.x;
+        this.baseY = this.player.y;
 
         //  Rising-tension vignette: a radial glow (white texture, tinted live) whose
         //  alpha grows with difficulty and whose COLOUR drifts over time so long runs
@@ -75,31 +77,6 @@ export class Game extends Phaser.Scene
         this.scoreText = this.add.text(32, 24, '0', {
             fontFamily: FONT, fontSize: '56px', color: css(PALETTE.warn),
         }).setDepth(10);   // above the vignette so the score stays readable at the edge
-
-        //  Long-run variety: every ~22s a gentle, telegraphed camera "breath". Skipped
-        //  entirely under reduce-motion (it's the one effect that can cause sickness).
-        if (!this.reduced) {
-            this.time.addEvent({ delay: 22000, loop: true, callback: () => this.zoomBreath() });
-        }
-    }
-
-    //  Telegraphed gentle zoom: warn the player, then a slow ±5% camera breath and back,
-    //  so a long run has rhythm without surprising or disorienting them.
-    private zoomBreath ()
-    {
-        if (this.dead) return;
-        const cue = this.add.text(this.scale.width / 2, this.scale.height * 0.12, '◎  zoom incoming', {
-            fontFamily: FONT, fontSize: '36px', color: css(PALETTE.warn),
-        }).setOrigin(0.5).setAlpha(0).setDepth(10);
-        this.tweens.add({ targets: cue, alpha: 1, duration: 300, yoyo: true, hold: 1000, onComplete: () => cue.destroy() });
-
-        this.time.delayedCall(1500, () => {
-            if (this.dead) return;
-            //  Tween the camera's zoom property directly (in → out via yoyo). Avoids
-            //  camera.zoomTo / the Zoom effect, which throws "this.ease is not a function"
-            //  in Phaser 4. Tweens resolve the ease string fine.
-            this.tweens.add({ targets: this.cameras.main, zoom: 1.05, duration: 1300, ease: 'Sine.InOut', yoyo: true });
-        });
     }
 
     //  Procedural radial vignette — WHITE so it can be tinted to any colour at runtime.
@@ -152,6 +129,11 @@ export class Game extends Phaser.Scene
             this.player.scaleX = Phaser.Math.Linear(this.player.scaleX, 1 + stretch, 0.25);
             this.player.scaleY = Phaser.Math.Linear(this.player.scaleY, 1 - stretch, 0.25);
         }
+
+        //  Constant gentle up/down bob — gives the block life; eases out as you move,
+        //  off under reduce-motion. (The squash "breath" below layers on top of this.)
+        const idle = 1 - Phaser.Math.Clamp(speed * 0.05, 0, 1);
+        this.player.y = this.baseY + Math.sin(this.elapsed / 320) * (this.reduced ? 0 : 5) * idle;
 
         //  Dynamic rest: only AFTER a real bout of movement and THEN holding still a beat
         //  does the block take a comic "breath out" — earned and relatable, not constant.
@@ -253,19 +235,6 @@ export class Game extends Phaser.Scene
                 { scaleX: 1, scaleY: 1, duration: 380, ease: 'Back.Out' },                     // relax
             ],
             onComplete: () => { this.breathing = false; },
-        });
-        this.time.delayedCall(440, () => this.breathPuff());
-    }
-
-    //  A soft "puff" cloud that rises and fades from the top of the block, comic-style.
-    private breathPuff ()
-    {
-        if (this.dead) return;
-        const p = this.player;
-        const puff = this.add.ellipse(p.x, p.y - 44, 26, 18, PALETTE.ink, 0.45).setDepth(4);
-        this.tweens.add({
-            targets: puff, y: p.y - 124, scaleX: 2.4, scaleY: 2.4, alpha: 0,
-            duration: 850, ease: 'Sine.Out', onComplete: () => puff.destroy(),
         });
     }
 
