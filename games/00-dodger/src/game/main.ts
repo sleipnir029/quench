@@ -13,7 +13,8 @@ const config: Phaser.Types.Core.GameConfig = {
     height: 1080,
     parent: 'game-container',
     backgroundColor: PALETTE.bg,
-    roundPixels: true,
+    roundPixels: false,   // false = sub-pixel motion; fast-falling blocks render smooth, not stepped
+    antialias: true,
     scale: {
         mode: Phaser.Scale.FIT,
         autoCenter: Phaser.Scale.CENTER_BOTH,
