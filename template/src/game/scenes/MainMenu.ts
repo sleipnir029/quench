@@ -19,11 +19,11 @@ export class MainMenu extends Scene
         const { width: w, height: h } = this.scale;
 
         this.add.text(w / 2, h * 0.4, 'TITLE', {
-            fontFamily: FONT, fontSize: '72px', color: css(PALETTE.ink),
+            fontFamily: FONT, fontSize: '144px', color: css(PALETTE.ink),
         }).setOrigin(0.5);
 
         this.add.text(w / 2, h * 0.7, 'tap or press space to start', {
-            fontFamily: FONT, fontSize: '22px', color: css(PALETTE.mute),
+            fontFamily: FONT, fontSize: '44px', color: css(PALETTE.mute),
         }).setOrigin(0.5);
 
         let started = false;

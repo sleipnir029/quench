@@ -22,11 +22,17 @@ public/              # only if a SPEC names real assets (Kenney CC0)
 ```
 
 ## Game config (src/main.ts)
+Design resolution **1920×1080** (16:9), `Phaser.AUTO`, `Scale.FIT`, centered. The
+canvas renders at 1080p so text/shapes/images stay crisp on modern (incl. retina/4K)
+displays instead of being upscaled from a low buffer. Author element sizes (fonts,
+rects, fall speeds) in this 1920×1080 space; positions use `scale.width/height` so they
+scale automatically.
 ```ts
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
-  width: 960, height: 540,
+  width: 1920, height: 1080,
   backgroundColor: PALETTE.bg,
+  roundPixels: true,
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
   scene: [Boot, Preload, Game, GameOver],
   // pixelArt: true ONLY when a SPEC introduces pixel sprites (games 3+).

@@ -9,9 +9,10 @@ import { hitstop } from '../feel/hitstop';
 
 //  Difficulty = two numbers ramping with elapsed time, nothing more (scope cap).
 //  Both reach their hardest at RAMP_MS, then hold.
+//  Spatial values authored for the 1920×1080 design resolution (see CONVENTIONS).
 const RAMP_MS = 45000;
-const SPAWN_MS = { easy: 900, hard: 300 };   // ms between hazards
-const FALL_PX  = { easy: 220, hard: 560 };   // px / second
+const SPAWN_MS = { easy: 900, hard: 300 };    // ms between hazards (time — resolution-independent)
+const FALL_PX  = { easy: 440, hard: 1120 };   // px / second
 
 export class Game extends Phaser.Scene
 {
@@ -40,11 +41,11 @@ export class Game extends Phaser.Scene
 
         this.axis = onAxisX(this);
 
-        this.player = this.add.rectangle(w / 2, h - 40, 46, 28, PALETTE.hot)
-            .setStrokeStyle(2, PALETTE.ink, 0.35);
+        this.player = this.add.rectangle(w / 2, h - 80, 92, 56, PALETTE.hot)
+            .setStrokeStyle(4, PALETTE.ink, 0.35);
 
-        this.scoreText = this.add.text(16, 12, '0', {
-            fontFamily: FONT, fontSize: '28px', color: css(PALETTE.warn),
+        this.scoreText = this.add.text(32, 24, '0', {
+            fontFamily: FONT, fontSize: '56px', color: css(PALETTE.warn),
         });
     }
 
@@ -94,9 +95,9 @@ export class Game extends Phaser.Scene
     private spawnHazard ()
     {
         const w = this.scale.width;
-        const width = Phaser.Math.Between(28, 72);
+        const width = Phaser.Math.Between(56, 144);
         const x = Phaser.Math.Between(width, w - width);
-        const haz = this.add.rectangle(x, -24, width, 24, PALETTE.mute); // sharp corners = dangerous
+        const haz = this.add.rectangle(x, -48, width, 48, PALETTE.mute); // sharp corners = dangerous
         //  Spawns scale in (CONVENTIONS easing rule).
         haz.setScale(1, 0.4);
         this.tweens.add({ targets: haz, scaleY: 1, duration: 140, ease: 'Quad.Out' });

@@ -23,19 +23,19 @@ export class GameOver extends Scene
         const isBest = data.isBest ?? false;
 
         this.add.text(w / 2, h * 0.32, 'GAME OVER', {
-            fontFamily: FONT, fontSize: '56px', color: css(PALETTE.hot),
+            fontFamily: FONT, fontSize: '112px', color: css(PALETTE.hot),
         }).setOrigin(0.5);
 
         this.add.text(w / 2, h * 0.52, `${score}s`, {
-            fontFamily: FONT, fontSize: '40px', color: css(PALETTE.ink),
+            fontFamily: FONT, fontSize: '80px', color: css(PALETTE.ink),
         }).setOrigin(0.5);
 
         this.add.text(w / 2, h * 0.63, isBest ? 'new best!' : `best  ${high}s`, {
-            fontFamily: FONT, fontSize: '22px', color: css(isBest ? PALETTE.warn : PALETTE.mute),
+            fontFamily: FONT, fontSize: '44px', color: css(isBest ? PALETTE.warn : PALETTE.mute),
         }).setOrigin(0.5);
 
         this.add.text(w / 2, h * 0.8, 'tap or press space to retry', {
-            fontFamily: FONT, fontSize: '20px', color: css(PALETTE.mute),
+            fontFamily: FONT, fontSize: '40px', color: css(PALETTE.mute),
         }).setOrigin(0.5);
 
         let restarting = false;

@@ -18,7 +18,7 @@ export class Game extends Scene
         const { width: w, height: h } = this.scale;
 
         this.add.text(w / 2, h / 2, 'build your mechanic here', {
-            fontFamily: FONT, fontSize: '28px', color: css(PALETTE.cool),
+            fontFamily: FONT, fontSize: '56px', color: css(PALETTE.cool),
         }).setOrigin(0.5);
 
         //  Placeholder flow so the skeleton runs end-to-end out of the box.

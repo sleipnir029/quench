@@ -6,11 +6,11 @@ import { Game as MainGame } from './scenes/Game';
 import { GameOver } from './scenes/GameOver';
 import { PALETTE } from './lib/palette';
 
-//  Design resolution 960×540, FIT + centered, per CONVENTIONS. See the studio bible.
+//  Design resolution 1920×1080, FIT + centered, per CONVENTIONS. See the studio bible.
 const config: Phaser.Types.Core.GameConfig = {
     type: Phaser.AUTO,
-    width: 960,
-    height: 540,
+    width: 1920,
+    height: 1080,
     parent: 'game-container',
     backgroundColor: PALETTE.bg,
     roundPixels: true,
