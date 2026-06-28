@@ -68,16 +68,21 @@ export class Game extends Phaser.Scene
         }).setDepth(10);   // above the vignette so the score stays readable at the edge
     }
 
-    //  Procedural radial-gradient vignette (transparent centre → dark edges). Cached.
+    //  Procedural radial vignette — a HOT (danger) edge glow, not black: a black
+    //  vignette on the near-black bg was invisible. Transparent centre (player stays
+    //  clear) → hot at the corners. Cached.
     private vignetteTexture (w: number, h: number): string
     {
         const key = 'vignette';
         if (this.textures.exists(key)) return key;
+        const c = Phaser.Display.Color.IntegerToColor(PALETTE.hot);
+        const rgb = `${c.red},${c.green},${c.blue}`;
         const tex = this.textures.createCanvas(key, w, h);
         const ctx = tex!.getContext();
-        const g = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.32, w / 2, h / 2, Math.max(w, h) * 0.62);
-        g.addColorStop(0, 'rgba(0,0,0,0)');
-        g.addColorStop(1, 'rgba(0,0,0,1)');
+        const g = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.25, w / 2, h / 2, Math.max(w, h) * 0.72);
+        g.addColorStop(0, `rgba(${rgb},0)`);
+        g.addColorStop(0.6, `rgba(${rgb},0)`);   // keep the play area clear
+        g.addColorStop(1, `rgba(${rgb},1)`);      // glow concentrated at the edges
         ctx.fillStyle = g;
         ctx.fillRect(0, 0, w, h);
         tex!.refresh();
@@ -114,9 +119,9 @@ export class Game extends Phaser.Scene
         const spawnInterval = Phaser.Math.Linear(SPAWN_MS.easy, SPAWN_MS.hard, k);
         const fallSpeed = Phaser.Math.Linear(FALL_PX.easy, FALL_PX.hard, k);
 
-        //  Vignette deepens linearly with time (not the eased curve) so tension creeps
-        //  in steadily through the mid-game, not just at the very end. Max ~0.5 alpha.
-        this.vignette.setAlpha(0.5 * t);
+        //  Danger glow deepens linearly with time, with a subtle pulse so it reads as
+        //  rising threat. Visible now that it's hot-red on the dark bg (was black).
+        this.vignette.setAlpha((0.6 + Math.sin(this.elapsed / 260) * 0.08) * t);
 
         this.spawnTimer += dt;
         if (this.spawnTimer >= spawnInterval) {
