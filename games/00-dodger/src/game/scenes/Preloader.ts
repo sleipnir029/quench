@@ -33,32 +33,38 @@ export class Preloader extends Phaser.Scene
         const s = (w * 0.7) / logo.width;
         logo.setScale(s * 0.9);
 
-        const HOLD = 700;   // pause at full opacity before the fade-out
+        const HOLD = 800;   // pause at full opacity before the fade-out
 
-        //  Studio splash: gradual fade + settle in → hold → gradual fade + drift out.
-        //  The hold is a `delay` on the fade-out (a no-op tween would collapse to 0).
+        //  Studio splash, sequenced so steps never overlap:
+        //  fade + settle in → hold → fade + drift out (logo FULLY gone) → THEN morph
+        //  the backdrop to the game bg → title card. The morph runs only in the
+        //  fade-out's onComplete, so the logo's (black) border can never show against
+        //  the shifting background.
         this.tweens.chain({
             targets: logo,
             tweens: [
-                { alpha: 1, scale: s, duration: 900, ease: 'Sine.Out' },              // fade + settle in
-                { alpha: 0, scale: s * 1.06, duration: 900, ease: 'Sine.In', delay: HOLD }, // hold, then fade + drift out
+                { alpha: 1, scale: s, duration: 1000, ease: 'Sine.Out' },              // fade + settle in
+                { alpha: 0, scale: s * 1.06, duration: 1000, ease: 'Sine.In', delay: HOLD }, // hold, then fade + drift out
             ],
-            onComplete: () => this.scene.start('MainMenu'),
+            onComplete: () => this.morphToMenu(splashColor, gameColor),
         });
+    }
 
-        //  Morph the backdrop from the logo colour to the game bg during the fade-out,
-        //  so it lands exactly on the menu's background — a seamless, deterministic handoff.
+    //  Logo is fully faded by now, so the backdrop can morph cleanly to the menu bg.
+    private morphToMenu (from: Phaser.Display.Color, to: Phaser.Display.Color)
+    {
         const morph = { t: 0 };
         this.tweens.add({
             targets: morph,
             t: 1,
-            delay: 900 + HOLD,   // start as the logo begins fading out
-            duration: 900,       // matches the fade-out
+            delay: 250,        // a small beat on the splash colour before it shifts
+            duration: 1000,    // slow, subtle morph
             ease: 'Sine.InOut',
             onUpdate: () => {
-                const c = Phaser.Display.Color.Interpolate.ColorWithColor(splashColor, gameColor, 100, morph.t * 100);
+                const c = Phaser.Display.Color.Interpolate.ColorWithColor(from, to, 100, morph.t * 100);
                 this.cameras.main.setBackgroundColor(Phaser.Display.Color.GetColor(c.r, c.g, c.b));
             },
+            onComplete: () => this.scene.start('MainMenu'),
         });
     }
 }
