@@ -25,6 +25,8 @@ export class Game extends Phaser.Scene
     private dead = false;
     private prevX = 0;         // for velocity-based squash/stretch + lean
     private lastMilestone = 0; // last 10s score pop fired
+    private baseY = 0;         // player rest y, for the idle bob
+    private vignette!: Phaser.GameObjects.Image;
 
     //  Base half-size of the player. Collision uses this fixed box, NOT the visually
     //  squashed/leaned sprite, so deaths stay fair regardless of the movement juice.
@@ -52,10 +54,32 @@ export class Game extends Phaser.Scene
         this.player = this.add.rectangle(w / 2, h - 80, 92, 56, PALETTE.hot)
             .setStrokeStyle(4, PALETTE.ink, 0.35);
         this.prevX = this.player.x;
+        this.baseY = this.player.y;
+
+        //  Rising-tension vignette: a radial dark overlay whose alpha grows with
+        //  difficulty. Texture built once procedurally (no asset), reused across runs.
+        this.vignette = this.add.image(w / 2, h / 2, this.vignetteTexture(w, h))
+            .setAlpha(0).setDepth(5);
 
         this.scoreText = this.add.text(32, 24, '0', {
             fontFamily: FONT, fontSize: '56px', color: css(PALETTE.warn),
-        });
+        }).setDepth(10);   // above the vignette so the score stays readable at the edge
+    }
+
+    //  Procedural radial-gradient vignette (transparent centre → dark edges). Cached.
+    private vignetteTexture (w: number, h: number): string
+    {
+        const key = 'vignette';
+        if (this.textures.exists(key)) return key;
+        const tex = this.textures.createCanvas(key, w, h);
+        const ctx = tex!.getContext();
+        const g = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.32, w / 2, h / 2, Math.max(w, h) * 0.62);
+        g.addColorStop(0, 'rgba(0,0,0,0)');
+        g.addColorStop(1, 'rgba(0,0,0,1)');
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, w, h);
+        tex!.refresh();
+        return key;
     }
 
     update (_time: number, dt: number)
@@ -77,12 +101,20 @@ export class Game extends Phaser.Scene
         this.player.scaleX = Phaser.Math.Linear(this.player.scaleX, 1 + stretch, 0.25);
         this.player.scaleY = Phaser.Math.Linear(this.player.scaleY, 1 - stretch, 0.25);
 
+        //  Idle bob: gentle "breathing" when still, fading out as you move.
+        const idle = 1 - Phaser.Math.Clamp(Math.abs(vx) * 0.05, 0, 1);
+        this.player.y = this.baseY + Math.sin(this.elapsed / 320) * 5 * idle;
+
         //  Difficulty: still the two numbers vs time, but on a quadratic ease-in curve
         //  so the early game is calm and tension builds as it ramps.
         const t = Math.min(this.elapsed / RAMP_MS, 1);
         const k = t * t;
         const spawnInterval = Phaser.Math.Linear(SPAWN_MS.easy, SPAWN_MS.hard, k);
         const fallSpeed = Phaser.Math.Linear(FALL_PX.easy, FALL_PX.hard, k);
+
+        //  Vignette deepens linearly with time (not the eased curve) so tension creeps
+        //  in steadily through the mid-game, not just at the very end. Max ~0.5 alpha.
+        this.vignette.setAlpha(0.5 * t);
 
         this.spawnTimer += dt;
         if (this.spawnTimer >= spawnInterval) {
@@ -124,10 +156,10 @@ export class Game extends Phaser.Scene
         const w = this.scale.width;
         const width = Phaser.Math.Between(56, 144);
         const x = Phaser.Math.Between(width, w - width);
-        const haz = this.add.rectangle(x, -48, width, 48, PALETTE.mute); // sharp corners = dangerous
-        //  Spawns scale in (CONVENTIONS easing rule).
+        const haz = this.add.rectangle(x, -48, width, 48, PALETTE.mute).setAlpha(0); // sharp corners = dangerous
+        //  Telegraph: fade + scale in as it spawns, so fast hazards read a beat earlier.
         haz.setScale(1, 0.4);
-        this.tweens.add({ targets: haz, scaleY: 1, duration: 140, ease: 'Quad.Out' });
+        this.tweens.add({ targets: haz, scaleY: 1, alpha: 1, duration: 160, ease: 'Quad.Out' });
         this.hazards.push(haz);
     }
 
