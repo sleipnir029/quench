@@ -2,6 +2,7 @@ import { Scene } from 'phaser';
 import { PALETTE, css, FONT } from '../lib/palette';
 import { Score } from '../lib/score';
 import { deltaE76, colorAtDeltaE, type RGB } from '../lib/color';
+import { spotlight, paintChip, emptyWell, ripple, droplet } from '../lib/paint';
 import { shake } from '../feel/shake';
 import { burst } from '../feel/burst';
 import { hitstop } from '../feel/hitstop';
@@ -81,12 +82,13 @@ export class Game extends Scene {
         //  Mood: a full-screen base that drifts toward a desaturated version of each
         //  round's target — atmosphere without fighting the palette.
         this.bgRect = this.add.rectangle(w / 2, h / 2, w, h, PALETTE.bg).setDepth(-100);
+        spotlight(this);   // soft warm studio light over the worktop
 
-        this.add.text(this.targetX, this.swY - this.swH / 2 - 50, 'TARGET', {
-            fontFamily: FONT, fontSize: '40px', color: css(PALETTE.mute),
+        this.add.text(this.targetX, this.swY - this.swH / 2 - 52, 'match this', {
+            fontFamily: FONT, fontSize: '34px', color: css(PALETTE.mute),
         }).setOrigin(0.5);
-        this.add.text(this.mixX, this.swY - this.swH / 2 - 50, 'MIX', {
-            fontFamily: FONT, fontSize: '40px', color: css(PALETTE.mute),
+        this.add.text(this.mixX, this.swY - this.swH / 2 - 52, 'your mix', {
+            fontFamily: FONT, fontSize: '34px', color: css(PALETTE.mute),
         }).setOrigin(0.5);
 
         //  Centered-origin graphics so scale tweens punch/reveal from the middle.
@@ -99,14 +101,15 @@ export class Game extends Scene {
             fontFamily: FONT, fontSize: '28px', color: css(PALETTE.mute),
         }).setOrigin(0.5);
 
-        this.roundText = this.add.text(w / 2, 56, '', {
-            fontFamily: FONT, fontSize: '44px', color: css(PALETTE.ink),
-        }).setOrigin(0.5);
-        this.scoreText = this.add.text(w - 60, 48, '', {
-            fontFamily: FONT, fontSize: '44px', color: css(PALETTE.ink),
+        //  Quiet, tucked-back HUD — the paint is the show, not the readouts.
+        this.roundText = this.add.text(60, 52, '', {
+            fontFamily: FONT, fontSize: '34px', color: css(PALETTE.mute),
+        }).setOrigin(0, 0.5);
+        this.scoreText = this.add.text(w - 60, 52, '', {
+            fontFamily: FONT, fontSize: '38px', color: css(PALETTE.ink),
         }).setOrigin(1, 0.5);
-        this.streakText = this.add.text(w - 60, 96, '', {
-            fontFamily: FONT, fontSize: '32px', color: css(PALETTE.warn),
+        this.streakText = this.add.text(w - 60, 98, '', {
+            fontFamily: FONT, fontSize: '28px', color: css(PALETTE.warn),
         }).setOrigin(1, 0.5);
 
         //  The verdict: ΔE pops in the centre AFTER you lock — teaches the metric without
@@ -131,8 +134,7 @@ export class Game extends Scene {
         SOURCES.forEach((src, i) => {
             const x = 360 + i * 300;
             this.srcPos[i] = { x, y };
-            const g = this.add.graphics();
-            this.srcG[i] = g;
+            this.srcG[i] = this.add.graphics({ x, y });   // centred so paintChip + punch pivot here
             this.srcLabel[i] = this.add.text(x, y + btnH / 2 + 34, src.name, {
                 fontFamily: FONT, fontSize: '40px', color: css(PALETTE.ink),
             }).setOrigin(0.5);
@@ -232,6 +234,7 @@ export class Game extends Scene {
 
     private landDrop(color: number) {
         burst(this, this.mixX, this.swY, color, 6);
+        ripple(this, this.mixX, this.swY, color);   // paint splashes into the pool
         this.drawDots();
         this.punch(this.dotsG, 1.18, 120);
 
@@ -340,7 +343,7 @@ export class Game extends Scene {
 
     private driftBackground() {
         const from = rgbOf(this.bgRect.fillColor >>> 0);
-        const to = lerpRGB(rgbOf(PALETTE.bg), this.target, 0.12);
+        const to = lerpRGB(rgbOf(PALETTE.bg), this.target, 0.06);
         const o = { t: 0 };
         this.tweens.add({
             targets: o, t: 1, duration: 600, ease: 'Sine.easeInOut',
@@ -355,54 +358,44 @@ export class Game extends Scene {
     }
 
     private drawTarget() {
-        const g = this.targetG; g.clear();
-        this.roundRect(g, -this.swW / 2, -this.swH / 2, this.swW, this.swH, 18, int(this.target), 1);
+        paintChip(this.targetG, this.swW, this.swH, int(this.target), false);   // dry reference chip
     }
 
     private drawMix() {
-        const g = this.mixG; g.clear();
-        const x = -this.swW / 2, y = -this.swH / 2;
-        if (this.mixDisplay === null) {
-            this.roundRect(g, x, y, this.swW, this.swH, 18, PALETTE.bg, 1);
-            g.lineStyle(3, PALETTE.mute, 0.8);
-            g.strokeRoundedRect(x, y, this.swW, this.swH, 18);
-        } else {
-            this.roundRect(g, x, y, this.swW, this.swH, 18, int(this.mixDisplay), 1);
-        }
+        if (this.mixDisplay === null) emptyWell(this.mixG, this.swW, this.swH);
+        else paintChip(this.mixG, this.swW, this.swH, int(this.mixDisplay), true);   // wet pool
     }
 
     //  The pass-line chip: a colour exactly `tolerance` ΔE from the target — the player
     //  SEES how different a colour is still allowed, and watches it tighten each round.
     private drawChip() {
-        const g = this.chipG; g.clear();
-        const cw = 160, ch = 100;
-        const edge = colorAtDeltaE(this.target, this.tolerance);
-        this.roundRect(g, -cw / 2, -ch / 2, cw, ch, 12, int(edge), 1);
-        g.lineStyle(2, PALETTE.ink, 0.35);
-        g.strokeRoundedRect(-cw / 2, -ch / 2, cw, ch, 12);
+        paintChip(this.chipG, 160, 100, int(colorAtDeltaE(this.target, this.tolerance)), false);
         this.chipCaption.setText(`pass line · ΔE ${this.tolerance.toFixed(0)}`);
     }
 
-    //  Drop budget as a row of dots (relative to dotsG's centre so it can punch).
+    //  Drop budget as little paint droplets (relative to dotsG's centre so it can punch).
     private drawDots() {
         const g = this.dotsG; g.clear();
-        const r = 12, gap = 40;
+        const r = 11, gap = 42;
         const startX = -((BUDGET - 1) * gap) / 2;
         const low = this.dropsLeft <= 3;
         for (let i = 0; i < BUDGET; i++) {
-            const x = startX + i * gap;
-            if (i < this.dropsLeft) { g.fillStyle(low ? PALETTE.warn : PALETTE.cool, 1); g.fillCircle(x, 0, r); }
-            else { g.lineStyle(2, PALETTE.mute, 0.9); g.strokeCircle(x, 0, r); }
+            droplet(g, startX + i * gap, 0, r, low ? PALETTE.warn : PALETTE.cool, i < this.dropsLeft);
         }
     }
 
     private refreshSources() {
         const btnW = 240, btnH = 176;
         SOURCES.forEach((src, i) => {
-            const g = this.srcG[i]; g.clear();
-            const { x, y } = this.srcPos[i];
+            const g = this.srcG[i];
             const on = this.available[i];
-            this.roundRect(g, x - btnW / 2, y - btnH / 2, btnW, btnH, 18, on ? int(src.rgb) : PALETTE.mute, on ? 1 : 0.3);
+            if (on) {
+                paintChip(g, btnW, btnH, int(src.rgb), true);   // a glossy bottle of paint
+            } else {
+                g.clear();
+                g.fillStyle(PALETTE.mute, 0.22).fillRoundedRect(-btnW / 2, -btnH / 2, btnW, btnH, 24);
+                g.lineStyle(2, PALETTE.mute, 0.3).strokeRoundedRect(-btnW / 2, -btnH / 2, btnW, btnH, 24);
+            }
             this.srcLabel[i].setAlpha(on ? 1 : 0.35);
         });
     }

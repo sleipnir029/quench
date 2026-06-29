@@ -3,6 +3,7 @@ import { PALETTE, css, FONT } from '../lib/palette';
 import { Score } from '../lib/score';
 import { onAction } from '../lib/input';
 import { sfx } from '../feel/sfx';
+import { spotlight, paintChip } from '../lib/paint';
 import type { RGB } from '../lib/color';
 
 const GAME_ID = '01-mixer';
@@ -28,6 +29,8 @@ export class GameOver extends Scene
         const rounds = data.rounds ?? 0;
         const high = data.high ?? 0;
 
+        spotlight(this);
+
         this.add.text(w / 2, 130, 'GAME OVER', {
             fontFamily: FONT, fontSize: '100px', color: css(PALETTE.hot),
         }).setOrigin(0.5);
@@ -36,8 +39,8 @@ export class GameOver extends Scene
         //  the perceptual metric says you missed. That gap IS the lesson.
         if (data.target && data.mix) {
             const sw = 300, sh = 230, y = 400, tx = w / 2 - 230, mx = w / 2 + 230;
-            this.swatch(tx, y, sw, sh, int(data.target), 'TARGET');
-            this.swatch(mx, y, sw, sh, int(data.mix), 'YOUR MIX');
+            this.swatch(tx, y, sw, sh, int(data.target), 'TARGET', false);
+            this.swatch(mx, y, sw, sh, int(data.mix), 'YOUR MIX', true);
 
             this.add.text(w / 2, y + sh / 2 + 70,
                 `ΔE ${data.deltaE.toFixed(1)}  ·  needed ${data.tolerance.toFixed(0)}`, {
@@ -74,10 +77,8 @@ export class GameOver extends Scene
         });
     }
 
-    private swatch(x: number, y: number, w: number, h: number, color: number, label: string) {
-        const g = this.add.graphics();
-        g.fillStyle(color, 1).fillRoundedRect(x - w / 2, y - h / 2, w, h, 18);
-        g.lineStyle(2, PALETTE.ink, 0.35).strokeRoundedRect(x - w / 2, y - h / 2, w, h, 18);
+    private swatch(x: number, y: number, w: number, h: number, color: number, label: string, wet: boolean) {
+        paintChip(this.add.graphics({ x, y }), w, h, color, wet);
         this.add.text(x, y - h / 2 - 40, label, {
             fontFamily: FONT, fontSize: '34px', color: css(PALETTE.mute),
         }).setOrigin(0.5);
