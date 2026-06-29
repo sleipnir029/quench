@@ -25,5 +25,9 @@
     },
     "include": [
         "src"
+    ],
+    "//": "*.check.ts are node-only self-checks run via tsx, not part of the game bundle.",
+    "exclude": [
+        "src/**/*.check.ts"
     ]
 }
