@@ -2,7 +2,7 @@
 //    npx tsx src/game/lib/color.check.ts
 //  Proves the metric is perceptual CIELAB ΔE, not raw sRGB Euclidean distance.
 
-import { deltaE76, srgbToLab, type RGB } from './color';
+import { deltaE76, srgbToLab, labToRgb, colorAtDeltaE, type RGB } from './color';
 import { strict as assert } from 'node:assert';
 
 const black: RGB = { r: 0, g: 0, b: 0 };
@@ -35,5 +35,26 @@ const dGreen = deltaE76(black, greenStep);
 const dBlue = deltaE76(black, blueStep);
 assert.ok(dGreen > dBlue * 1.15, `green step should outweigh blue step (${dGreen.toFixed(1)} vs ${dBlue.toFixed(1)})`);
 
-console.log('color.check OK  —  black/white ΔE=%s  greenΔE=%s  blueΔE=%s (equal sRGB gap)',
+//  labToRgb is the inverse of srgbToLab — a colour survives the round trip to the
+//  eye. (Tolerance ~1 ΔE is integer 0..255 quantisation, not a maths error.)
+const samples: RGB[] = [black, white,
+    { r: 209, g: 52, b: 56 }, { r: 43, g: 93, b: 209 }, { r: 242, g: 192, b: 20 }];
+for (const c of samples) {
+    const [Lc, Ac, Bc] = srgbToLab(c);
+    const back = labToRgb(Lc, Ac, Bc);
+    assert.ok(deltaE76(c, back) < 1.0, `round-trip ΔE < 1 for ${JSON.stringify(c)}`);
+}
+
+//  The "pass line" chip must be HONEST: a colour reported as `t` ΔE away really is
+//  ~t away — otherwise the lesson it teaches is a lie. Checked across the tolerance
+//  range (6 floor … 25 start) and a few base colours incl. a near-grey blend.
+for (const t of [6, 12, 25]) {
+    for (const c of samples.concat([{ r: 120, g: 140, b: 90 }])) {
+        const edge = colorAtDeltaE(c, t);
+        assert.ok(Math.abs(deltaE76(c, edge) - t) < 2.0,
+            `pass-line chip honest: ${t} ΔE from ${JSON.stringify(c)} (got ${deltaE76(c, edge).toFixed(1)})`);
+    }
+}
+
+console.log('color.check OK  —  black/white ΔE=%s  greenΔE=%s  blueΔE=%s (equal sRGB gap)  +round-trip +pass-line',
     deltaE76(black, white).toFixed(2), dGreen.toFixed(2), dBlue.toFixed(2));

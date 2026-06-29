@@ -41,3 +41,55 @@ export function deltaE76(a: RGB, b: RGB): number {
     const [l2, a2, b2] = srgbToLab(b);
     return Math.hypot(l1 - l2, a1 - a2, b1 - b2);
 }
+
+// ── the inverse direction (CIELAB -> sRGB) ──────────────────────────────────
+//  Re-apply the sRGB transfer function: linear-light 0..1 -> gamma-encoded 0..1.
+function delinearize(c: number): number {
+    return c <= 0.0031308 ? 12.92 * c : 1.055 * c ** (1 / 2.4) - 0.055;
+}
+
+//  Inverse of f(): undo CIELAB's nonlinear compression.
+function fInv(t: number): number {
+    const t3 = t ** 3;
+    return t3 > 0.008856 ? t3 : (t - 16 / 116) / 7.787;
+}
+
+//  CIELAB -> sRGB(0..255), clamped to the displayable gamut. The exact inverse of
+//  srgbToLab; together they round-trip to within ~1 ΔE (integer quantisation only —
+//  see color.check). Needed to *show* a colour a chosen ΔE away from another.
+export function labToRgb(L: number, a: number, b: number): RGB {
+    const fy = (L + 16) / 116;
+    const fx = fy + a / 500;
+    const fz = fy - b / 200;
+    const X = fInv(fx) * Xn, Y = fInv(fy) * Yn, Z = fInv(fz) * Zn;
+
+    //  CIE XYZ -> linear sRGB (inverse of the D65 matrix used in srgbToLab).
+    const r  = X *  3.2406 + Y * -1.5372 + Z * -0.4986;
+    const g  = X * -0.9689 + Y *  1.8758 + Z *  0.0415;
+    const bl = X *  0.0557 + Y * -0.2040 + Z *  1.0570;
+
+    const to255 = (c: number) => Math.max(0, Math.min(255, Math.round(delinearize(c) * 255)));
+    return { r: to255(r), g: to255(g), b: to255(bl) };
+}
+
+//  A colour exactly `dE` ΔE from `base`, kept inside the sRGB gamut. Powers the
+//  mixer's "pass line" reference chip: the player SEES how different a colour the
+//  current tolerance away really looks. Clamping to the gamut can shorten a LAB
+//  step, so we try several directions and keep the one whose in-gamut result lands
+//  closest to the requested ΔE — that keeps the chip honest (asserted in color.check).
+export function colorAtDeltaE(base: RGB, dE: number): RGB {
+    const [L, A, B] = srgbToLab(base);
+    const dirs: [number, number, number][] = [
+        [-1, 0, 0], [1, 0, 0],      // darker / lighter
+        [0, 1, 0], [0, -1, 0],      // toward red / green
+        [0, 0, 1], [0, 0, -1],      // toward yellow / blue
+        [-0.6, 0.5, 0.6],           // a diagonal, for variety
+    ];
+    let best = base, bestErr = Infinity;
+    for (const [dl, da, db] of dirs) {
+        const cand = labToRgb(L + dl * dE, A + da * dE, B + db * dE);
+        const err = Math.abs(deltaE76(base, cand) - dE);
+        if (err < bestErr) { bestErr = err; best = cand; }
+    }
+    return best;
+}
