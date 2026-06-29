@@ -3,7 +3,7 @@ import { PALETTE, css, FONT } from '../lib/palette';
 import { Score } from '../lib/score';
 import { onAction } from '../lib/input';
 import { sfx } from '../feel/sfx';
-import { spotlight, paintChip } from '../lib/paint';
+import { spotlight, paintChip, TITLE_FONT } from '../lib/paint';
 
 //  Keys the high score in localStorage (quench:<id>:hi).
 const GAME_ID = '01-mixer';
@@ -23,7 +23,7 @@ export class MainMenu extends Scene
         spotlight(this);
 
         this.add.text(w / 2, h * 0.34, 'MIXER', {
-            fontFamily: FONT, fontSize: '152px', color: css(PALETTE.ink),
+            fontFamily: TITLE_FONT, fontSize: '164px', color: css(PALETTE.ink),
         }).setOrigin(0.5);
 
         this.add.text(w / 2, h * 0.50, 'match the target colour — your eye decides, not the maths', {

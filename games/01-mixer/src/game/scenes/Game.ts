@@ -2,7 +2,7 @@ import { Scene } from 'phaser';
 import { PALETTE, css, FONT } from '../lib/palette';
 import { Score } from '../lib/score';
 import { deltaE76, colorAtDeltaE, type RGB } from '../lib/color';
-import { spotlight, paintChip, emptyWell, ripple, droplet } from '../lib/paint';
+import { spotlight, paintChip, emptyWell, ripple, droplet, crack, MUD } from '../lib/paint';
 import { shake } from '../feel/shake';
 import { burst } from '../feel/burst';
 import { hitstop } from '../feel/hitstop';
@@ -143,15 +143,20 @@ export class Game extends Scene {
         });
     }
 
+    //  Lock = an inked stamp pad: press it to "stamp" your mix in for scoring.
     private buildLock() {
-        const w = 440, h = 82, x = this.scale.width / 2, y = 998;
-        const g = this.add.graphics();
-        this.roundRect(g, x - w / 2, y - h / 2, w, h, 18, PALETTE.mute, 1);
-        this.add.text(x, y, 'LOCK', {
-            fontFamily: FONT, fontSize: '46px', color: css(PALETTE.ink),
+        const w = 440, h = 86, x = this.scale.width / 2, y = 996;
+        const g = this.add.graphics({ x, y });
+        paintChip(g, w, h, 0x2a2420, false);
+        g.lineStyle(3, PALETTE.ink, 0.45).strokeRoundedRect(-w / 2 + 12, -h / 2 + 12, w - 24, h - 24, 16);
+        const label = this.add.text(x, y, 'LOCK IT', {
+            fontFamily: FONT, fontSize: '40px', color: css(PALETTE.ink),
         }).setOrigin(0.5);
         const hit = this.add.rectangle(x, y, w, h, 0x000000, 0).setInteractive();
-        hit.on('pointerdown', () => this.lock());
+        hit.on('pointerdown', () => {
+            this.tweens.add({ targets: [g, label], scale: 0.95, duration: 80, yoyo: true, ease: 'Quad.easeOut' });
+            this.lock();
+        });
     }
 
     private newRound() {
@@ -300,6 +305,17 @@ export class Game extends Scene {
             sfx.play('hit');
             haptic([0, 90, 60, 140]);
             Score.commit(this.score);
+
+            //  The pool curdles to mud and cracks, then shatters.
+            this.mixColorTween?.remove();
+            const fromC = this.mixDisplay ?? m;
+            const mo = { t: 0 };
+            this.tweens.add({
+                targets: mo, t: 1, duration: 260, ease: 'Quad.easeIn',
+                onUpdate: () => { this.mixDisplay = lerpRGB(fromC, rgbOf(MUD), mo.t); this.drawMix(); },
+            });
+            crack(this, this.mixX, this.swY, this.swW, this.swH);
+
             this.time.delayedCall(420, () => hitstop(this, 80, () => {
                 shake(this, 220, 0.012);
                 burst(this, this.mixX, this.swY, PALETTE.hot, 18);
@@ -352,11 +368,6 @@ export class Game extends Scene {
     }
 
     // ── drawing (each graphics positioned at its centre; draw from -w/2,-h/2) ──
-    private roundRect(g: Phaser.GameObjects.Graphics, x: number, y: number, w: number, h: number, r: number, color: number, alpha: number) {
-        g.fillStyle(color, alpha);
-        g.fillRoundedRect(x, y, w, h, r);
-    }
-
     private drawTarget() {
         paintChip(this.targetG, this.swW, this.swH, int(this.target), false);   // dry reference chip
     }

@@ -3,7 +3,7 @@ import { PALETTE, css, FONT } from '../lib/palette';
 import { Score } from '../lib/score';
 import { onAction } from '../lib/input';
 import { sfx } from '../feel/sfx';
-import { spotlight, paintChip } from '../lib/paint';
+import { spotlight, paintChip, TITLE_FONT } from '../lib/paint';
 import type { RGB } from '../lib/color';
 
 const GAME_ID = '01-mixer';
@@ -32,7 +32,7 @@ export class GameOver extends Scene
         spotlight(this);
 
         this.add.text(w / 2, 130, 'GAME OVER', {
-            fontFamily: FONT, fontSize: '100px', color: css(PALETTE.hot),
+            fontFamily: TITLE_FONT, fontSize: '108px', color: css(PALETTE.hot),
         }).setOrigin(0.5);
 
         //  The teaching beat: your final mix beside the target. They look close — yet
