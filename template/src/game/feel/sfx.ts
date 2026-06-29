@@ -22,15 +22,18 @@ function audio(): AudioContext {
 }
 
 export const sfx = {
-    play(name: Name): void {
+    //  `semitones` transposes the blip (12 = up an octave) so the same tone can
+    //  signal "better" — e.g. a higher pickup on a successful round.
+    play(name: Name, semitones = 0): void {
         const c = audio();
         const t = tones[name];
+        const mul = 2 ** (semitones / 12);
         const now = c.currentTime;
         const osc = c.createOscillator();
         const gain = c.createGain();
         osc.type = t.type;
-        osc.frequency.setValueAtTime(t.f0, now);
-        osc.frequency.exponentialRampToValueAtTime(t.f1, now + t.dur);
+        osc.frequency.setValueAtTime(t.f0 * mul, now);
+        osc.frequency.exponentialRampToValueAtTime(t.f1 * mul, now + t.dur);
         //  exponentialRamp can't reach 0 — floor at 0.0001 for a clean fade.
         gain.gain.setValueAtTime(0.0001, now);
         gain.gain.exponentialRampToValueAtTime(0.3, now + 0.01);
