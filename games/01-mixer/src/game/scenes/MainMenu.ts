@@ -22,8 +22,11 @@ export class MainMenu extends Scene
             fontFamily: FONT, fontSize: '144px', color: css(PALETTE.ink),
         }).setOrigin(0.5);
 
-        this.add.text(w / 2, h * 0.7, 'match the target — tap to start', {
-            fontFamily: FONT, fontSize: '44px', color: css(PALETTE.mute),
+        this.add.text(w / 2, h * 0.66, 'match the target colour — your eye decides, not the maths', {
+            fontFamily: FONT, fontSize: '40px', color: css(PALETTE.mute),
+        }).setOrigin(0.5);
+        this.add.text(w / 2, h * 0.74, 'tap to start', {
+            fontFamily: FONT, fontSize: '44px', color: css(PALETTE.ink),
         }).setOrigin(0.5);
 
         let started = false;
