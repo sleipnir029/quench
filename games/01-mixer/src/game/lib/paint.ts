@@ -6,17 +6,6 @@ import { PALETTE } from './palette';
 //  Warm, friendly title face for the paint studio — system rounded, zero assets.
 export const TITLE_FONT = 'ui-rounded, "SF Pro Rounded", "Hiragino Maru Gothic Pro", system-ui, sans-serif';
 
-//  Lighten/darken a colour toward white/black — used to shade paint in its OWN hue
-//  (light pools at the top, the pigment darkens at the bottom) so chips read as volume.
-const chans = (c: number): [number, number, number] => [(c >> 16) & 255, (c >> 8) & 255, c & 255];
-function tint(color: number, t: number, toward: number): number {
-    const [r, g, b] = chans(color), [tr, tg, tb] = chans(toward);
-    const L = (a: number, z: number) => Math.round(a + (z - a) * t);
-    return (L(r, tr) << 16) | (L(g, tg) << 8) | L(b, tb);
-}
-const lighten = (c: number, t: number) => tint(c, t, 0xffffff);
-const darken = (c: number, t: number) => tint(c, t, 0x000000);
-
 //  Soft warm studio spotlight behind everything — a radial-gradient texture made once.
 export function spotlight(scene: Phaser.Scene): void {
     const w = scene.scale.width, h = scene.scale.height;
@@ -37,42 +26,21 @@ export function spotlight(scene: Phaser.Scene): void {
     scene.add.image(w / 2, h / 2, key).setDepth(-90);
 }
 
-//  Soft drop shadow under a chip — stacked low-alpha rounded rects fake a blur. Kept
-//  faint and sunk so it reads as a chip resting on the worktop, not a hard slab.
-const R = 26;
-function softShadow(g: Phaser.GameObjects.Graphics, w: number, h: number): void {
-    for (let i = 0; i < 3; i++) {
-        const s = i * 8;
-        g.fillStyle(0x000000, 0.085 - i * 0.022);
-        g.fillRoundedRect(-(w + s) / 2, -h / 2 + 18 + i * 5, w + s, h, R);
-    }
-}
-
-//  A paint chip into a centred Graphics. The form is shaded in the colour's OWN hue —
-//  light pooled at the top, the pigment darkening at the bottom — so it looks like wet
-//  paint with volume rather than a flat fill with a pasted-on white oval. A wet chip
-//  adds a small, soft sheen; a dry (matte) chip gets gentler light and no sheen.
-export function paintChip(g: Phaser.GameObjects.Graphics, w: number, h: number, color: number, wet: boolean): void {
+//  Studio-flat chip: a solid colour with one thin ink outline — handmade and graphic,
+//  matching the dodger look. No gloss, no gradient, no drop shadow; the colour IS the art.
+//  Life comes from motion (reveal punch, ripples), not from rendered 3D volume.
+const R = 12;
+export function paintChip(g: Phaser.GameObjects.Graphics, w: number, h: number, color: number, _wet: boolean): void {
     g.clear();
-    softShadow(g, w, h);
     g.fillStyle(color, 1).fillRoundedRect(-w / 2, -h / 2, w, h, R);
-    //  Volume, shaded in the colour's OWN hue. Each "band" is several faint stacked
-    //  ellipses so it falls off softly — no hard oval, no seam — like wet pigment.
-    const dark = darken(color, 0.5);
-    for (let i = 0; i < 4; i++) g.fillStyle(dark, 0.045).fillEllipse(0, h * 0.30, w * (0.55 + i * 0.14), h * (0.22 + i * 0.07));
-    const lite = lighten(color, wet ? 0.5 : 0.28);
-    for (let i = 0; i < 4; i++) g.fillStyle(lite, wet ? 0.055 : 0.04).fillEllipse(0, -h * 0.24, w * (0.42 + i * 0.14), h * (0.20 + i * 0.07));
-    //  A small, soft wet sheen — stacked faint so it glows rather than reads as a decal.
-    if (wet) for (let i = 0; i < 3; i++) g.fillStyle(0xffffff, 0.05).fillEllipse(-w * 0.08, -h * 0.30, w * (0.12 + i * 0.09), h * (0.06 + i * 0.045));
+    g.lineStyle(4, PALETTE.ink, 0.35).strokeRoundedRect(-w / 2, -h / 2, w, h, R);
 }
 
-//  Empty mix well — a dark recess with a rim, "waiting for paint".
+//  Empty mix well — a flat dark slot with a soft rim, "waiting for paint".
 export function emptyWell(g: Phaser.GameObjects.Graphics, w: number, h: number): void {
     g.clear();
-    softShadow(g, w, h);
-    g.fillStyle(0x0d0c12, 1).fillRoundedRect(-w / 2, -h / 2, w, h, R);
-    g.fillStyle(0x000000, 0.4).fillEllipse(0, h * 0.18, w * 0.86, h * 0.5);
-    g.lineStyle(3, PALETTE.mute, 0.45).strokeRoundedRect(-w / 2, -h / 2, w, h, R);
+    g.fillStyle(0x100f16, 1).fillRoundedRect(-w / 2, -h / 2, w, h, R);
+    g.lineStyle(4, PALETTE.mute, 0.4).strokeRoundedRect(-w / 2, -h / 2, w, h, R);
 }
 
 //  The pool curdles to muddy sludge on a failed lock — every pigment at once = brown.

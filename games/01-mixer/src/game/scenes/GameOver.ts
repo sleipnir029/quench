@@ -30,40 +30,43 @@ export class GameOver extends Scene
         const high = data.high ?? 0;
 
         spotlight(this);
+        const matchPct = Math.max(0, Math.round(100 - (data.deltaE ?? 0)));
+        const needPct = Math.round(100 - (data.tolerance ?? 0));
 
-        this.add.text(w / 2, 130, 'GAME OVER', {
-            fontFamily: TITLE_FONT, fontSize: '108px', color: css(PALETTE.hot),
-        }).setOrigin(0.5);
+        this.add.text(w / 2, 150, 'GAME OVER', {
+            fontFamily: TITLE_FONT, fontSize: '112px', color: css(PALETTE.hot),
+        }).setOrigin(0.5).setLetterSpacing(2);
 
         //  The teaching beat: your final mix beside the target. They look close — yet
-        //  the perceptual metric says you missed. That gap IS the lesson.
+        //  your eye saw a bigger gap than the RGB numbers. That gap IS the lesson.
         if (data.target && data.mix) {
-            const sw = 300, sh = 230, y = 400, tx = w / 2 - 230, mx = w / 2 + 230;
+            const sw = 300, sh = 230, y = 412, tx = w / 2 - 230, mx = w / 2 + 230;
             this.swatch(tx, y, sw, sh, int(data.target), 'TARGET', false);
             this.swatch(mx, y, sw, sh, int(data.mix), 'YOUR MIX', true);
 
-            this.add.text(w / 2, y + sh / 2 + 70,
-                `ΔE ${data.deltaE.toFixed(1)}  ·  needed ${data.tolerance.toFixed(0)}`, {
-                fontFamily: FONT, fontSize: '52px', color: css(PALETTE.warn),
+            this.add.text(w / 2, 600, `${matchPct}% MATCH`, {
+                fontFamily: FONT, fontSize: '58px', color: css(PALETTE.warn),
+            }).setOrigin(0.5).setLetterSpacing(2);
+            this.add.text(w / 2, 660, `you needed ${needPct}% to pass`, {
+                fontFamily: FONT, fontSize: '34px', color: css(PALETTE.mute),
             }).setOrigin(0.5);
 
-            this.add.text(w / 2, y + sh / 2 + 140,
-                'in raw RGB these read as close — your eye (and CIELAB) disagree.', {
+            this.add.text(w / 2, 728, 'RGB said these were close — your eyes said no.', {
                 fontFamily: FONT, fontSize: '30px', color: css(PALETTE.mute),
             }).setOrigin(0.5);
-            this.add.text(w / 2, y + sh / 2 + 180, "that perceptual gap is the whole game.", {
+            this.add.text(w / 2, 770, 'that perceptual gap is the whole game.', {
                 fontFamily: FONT, fontSize: '30px', color: css(PALETTE.mute),
             }).setOrigin(0.5);
         }
 
-        this.add.text(w / 2, 840, `SCORE  ${score}`, {
-            fontFamily: FONT, fontSize: '72px', color: css(PALETTE.ink),
-        }).setOrigin(0.5);
-        this.add.text(w / 2, 910, `rounds  ${rounds}     best  ${high}`, {
-            fontFamily: FONT, fontSize: '40px', color: css(PALETTE.mute),
+        this.add.text(w / 2, 880, `SCORE  ${score}`, {
+            fontFamily: FONT, fontSize: '70px', color: css(PALETTE.ink),
+        }).setOrigin(0.5).setLetterSpacing(2);
+        this.add.text(w / 2, 946, `rounds ${rounds}      best ${high}`, {
+            fontFamily: FONT, fontSize: '38px', color: css(PALETTE.mute),
         }).setOrigin(0.5);
 
-        this.add.text(w / 2, 1010, 'tap to retry', {
+        this.add.text(w / 2, 1024, 'tap to retry', {
             fontFamily: FONT, fontSize: '40px', color: css(PALETTE.mute),
         }).setOrigin(0.5);
 

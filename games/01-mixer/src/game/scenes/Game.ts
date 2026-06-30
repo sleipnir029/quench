@@ -112,12 +112,11 @@ export class Game extends Scene {
             fontFamily: FONT, fontSize: '28px', color: css(PALETTE.warn),
         }).setOrigin(1, 0.5);
 
-        //  The verdict: ΔE pops in the centre AFTER you lock — teaches the metric without
-        //  being an in-play hint (in-play ΔE is deliberately hidden).
-        const backing = this.add.rectangle(0, 0, 380, 104, PALETTE.bg, 0.82)
-            .setStrokeStyle(2, PALETTE.mute, 0.35);
+        //  The verdict: your % match pops in the centre AFTER you lock.
+        const backing = this.add.rectangle(0, 0, 500, 108, PALETTE.bg, 0.85)
+            .setStrokeStyle(4, PALETTE.ink, 0.35);
         this.resultText = this.add.text(0, 0, '', {
-            fontFamily: FONT, fontSize: '60px', color: css(PALETTE.warn),
+            fontFamily: FONT, fontSize: '52px', color: css(PALETTE.warn),
         }).setOrigin(0.5);
         this.resultBox = this.add.container(w / 2, this.swY, [backing, this.resultText])
             .setDepth(60).setScale(0).setVisible(false);
@@ -185,7 +184,7 @@ export class Game extends Scene {
         this.targetG.setScale(0); this.chipG.setScale(0);
         this.tweens.add({ targets: [this.targetG, this.chipG], scale: 1, ease: 'Back.easeOut', duration: 320 });
 
-        this.roundText.setText(`ROUND ${this.round}   ·   match within ΔE ${this.tolerance.toFixed(0)}`);
+        this.roundText.setText(`ROUND ${this.round}`);
         this.updateScoreText();
     }
 
@@ -277,8 +276,9 @@ export class Game extends Scene {
         const m = this.mix();
         const d = deltaE76(m, this.target);
         const win = d <= this.tolerance;
+        const matchPct = Math.max(0, Math.round(100 - d));   // ΔE → friendly "% match"
 
-        this.showResult(d, win);
+        this.showResult(matchPct, win);
 
         if (win) {
             this.rounds += 1;
@@ -328,15 +328,15 @@ export class Game extends Scene {
         }
     }
 
-    private showResult(d: number, win: boolean) {
+    private showResult(matchPct: number, win: boolean) {
         this.resultText.setColor(css(win ? PALETTE.cool : PALETTE.hot));
-        this.resultText.setText(`ΔE 0.0 ${win ? '✓' : '✗'}`);
+        this.resultText.setText(`0% MATCH ${win ? '✓' : '✗'}`);
         this.resultBox.setVisible(true).setScale(0);
         this.tweens.add({ targets: this.resultBox, scale: 1, ease: 'Back.easeOut', duration: 240 });
         const o = { v: 0 };
         this.tweens.add({
-            targets: o, v: d, duration: 320, ease: 'Cubic.easeOut',
-            onUpdate: () => this.resultText.setText(`ΔE ${o.v.toFixed(1)} ${win ? '✓' : '✗'}`),
+            targets: o, v: matchPct, duration: 320, ease: 'Cubic.easeOut',
+            onUpdate: () => this.resultText.setText(`${Math.round(o.v)}% MATCH ${win ? '✓' : '✗'}`),
         });
     }
 
@@ -381,7 +381,7 @@ export class Game extends Scene {
     //  SEES how different a colour is still allowed, and watches it tighten each round.
     private drawChip() {
         paintChip(this.chipG, 160, 100, int(colorAtDeltaE(this.target, this.tolerance)), false);
-        this.chipCaption.setText(`pass line · ΔE ${this.tolerance.toFixed(0)}`);
+        this.chipCaption.setText(`${Math.round(100 - this.tolerance)}%+ to pass`);
     }
 
     //  Drop budget as little paint droplets (relative to dotsG's centre so it can punch).
